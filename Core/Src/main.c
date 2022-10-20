@@ -72,11 +72,10 @@ static uint8_t boton = 0;
 static uint8_t sensorx = 0, sensory = 0, sensorz = 0;
 
 //variables compartidas
-static uint8_t activado = 0, timer_boton = 0, timer_lectura = 0, timer_led = 0;
+static uint8_t activado = 0, timer_boton = 1, timer_lectura = 0, timer_led = 0;
 
 //salidas
 static uint8_t faultx, faulty, faultz;
-static uint8_t led_activacion;
 
 //funciones de transicion
 static int boton_presionado (fsm_t* this) { /*if (timer_boton)*/ return boton; /*else return 0;*/ }
@@ -91,8 +90,8 @@ static int sensorz_off (fsm_t* this) { return !sensorz; }
 
 static int activado_on (fsm_t* this) { if (timer_lectura) return activado; else return 0; }
 static int activado_off (fsm_t* this) { if (!timer_lectura || !activado) return 1; else return 0; }
-static int activado_on_led (fsm_t* this) { if (timer_led) return activado; else return 0; }
-static int activado_off_led (fsm_t* this) { if (timer_led) return !activado; else return 0; }
+static int activado_on_led (fsm_t* this) { if (timer_led && activado) return 1; else return 0; }
+static int activado_off_led (fsm_t* this) { if (!timer_led||!activado) return 1; else return 0; }
 
 static int defecto (fsm_t* this)  {return 1;}
 
@@ -167,13 +166,11 @@ static void lectura_fin (fsm_t* this)
 
 static void led_activado (fsm_t* this)
 {
-  led_activacion = 1;
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 1);
 }
 
 static void led_no_activado (fsm_t* this)
 {
-  led_activacion = 0;
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 0);
 }
 
@@ -215,28 +212,6 @@ static fsm_trans_t led_activo[] = {
   {-1, NULL, -1, NULL },
   };
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
-{
-	/*if (htim->Instance == TIM1){ //500ms
-		if (timer_boton)
-			timer_boton = 1;
-		else
-			timer_boton = 0;
-	}*/
-	if(htim->Instance == TIM2){ //1ms
-		if (timer_lectura)
-			timer_lectura = 1;
-		else
-			timer_lectura = 0;
-	}
-	if (htim->Instance == TIM3){ //1s
-		if (timer_led)
-			timer_led = 1;
-		else
-			timer_led = 0;
-	}
-}
-
 /* USER CODE END 0 */
 
 /**
@@ -271,13 +246,12 @@ int main(void)
   MX_I2S3_Init();
   MX_SPI1_Init();
   MX_USB_HOST_Init();
-  MX_TIM1_Init();
-  MX_TIM2_Init();
-  MX_TIM3_Init();
+  MX_TIM6_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_OC_Start(&htim3, TIM_CHANNEL_1);
+
+  //Temporizadores
+  HAL_TIM_Base_Start_IT(&htim6);
 
   //Cración de las FSM
   fsm_t* fsm_inicio = fsm_new (inicio);
@@ -354,7 +328,7 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV8;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
@@ -365,17 +339,34 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if(GPIO_Pin==GPIO_PIN_0){
+	if(GPIO_Pin==GPIO_PIN_0 && timer_boton==1){
 		boton=~boton;
+		timer_boton=0;
+		HAL_TIM_Base_Start_IT(&htim7);
+
 	}
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+	if(htim->Instance==TIM6)
+	{
+		timer_led=~timer_led;
+	}
+	if(htim->Instance==TIM7)
+	{
+		timer_boton=1;
+		HAL_TIM_Base_Stop_IT(&htim7);
+		__HAL_TIM_SET_COUNTER(&htim7,0);
+	}
+}
+
 /* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
-
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
