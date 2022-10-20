@@ -184,22 +184,34 @@ static fsm_trans_t inicio[] = {
   {-1, NULL, -1, NULL },
   };
 
-static fsm_trans_t lectura[] = {
+static fsm_trans_t lecturax[] = {
   { ESPERA, activado_on, LECTURA, 0},
+  { LECTURA, activado_off, ESPERA, lectura_fin},
   { LECTURA, sensorx_on, LECTURA, lectura_x},
   { LECTURA, sensorx_off, LECTURA, lectura_x_fin},
+  {-1, NULL, -1, NULL },
+  };
+
+static fsm_trans_t lecturay[] = {
+  { ESPERA, activado_on, LECTURA, 0},
+  { LECTURA, activado_off, ESPERA, lectura_fin},
   { LECTURA, sensory_on, LECTURA, lectura_y},
   { LECTURA, sensory_off, LECTURA, lectura_y_fin},
+  {-1, NULL, -1, NULL },
+  };
+
+static fsm_trans_t lecturaz[] = {
+  { ESPERA, activado_on, LECTURA, 0},
+  { LECTURA, activado_off, ESPERA, lectura_fin},
   { LECTURA, sensorz_on, LECTURA, lectura_z},
   { LECTURA, sensorz_off, LECTURA, lectura_z_fin},
-  { LECTURA, activado_off, ESPERA, lectura_fin},
   {-1, NULL, -1, NULL },
   };
 
 static fsm_trans_t led_activo[] = {
   { LED_OFF, activado_on_led, LED_ON, led_activado},
-  { LED_ON, defecto, LED_ON, led_activado},
   { LED_ON, activado_off_led, LED_OFF, led_no_activado},
+  { LED_ON, defecto, LED_ON, led_activado},
   {-1, NULL, -1, NULL },
   };
 
@@ -269,7 +281,9 @@ int main(void)
 
   //Cración de las FSM
   fsm_t* fsm_inicio = fsm_new (inicio);
-  fsm_t* fsm_lectura = fsm_new (lectura);
+  fsm_t* fsm_lectura_x = fsm_new (lecturax);
+  fsm_t* fsm_lectura_y = fsm_new (lecturay);
+  fsm_t* fsm_lectura_z = fsm_new (lecturaz);
   fsm_t* fsm_led_activo = fsm_new (led_activo);
 
   /* USER CODE END 2 */
@@ -283,7 +297,9 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     fsm_fire (fsm_inicio);
-    fsm_fire (fsm_lectura);
+    fsm_fire (fsm_lectura_x);
+    fsm_fire (fsm_lectura_y);
+    fsm_fire (fsm_lectura_z);
     fsm_fire (fsm_led_activo);
 
     if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1))
@@ -348,18 +364,18 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin==GPIO_PIN_0){
+		boton=~boton;
+	}
+}
 /* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if(GPIO_Pin==GPIO_PIN_0){
-		boton=~boton;
-	}
-}
+
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
