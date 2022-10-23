@@ -88,7 +88,7 @@ static uint8_t activado = 0, timer_boton = 1, timer_lectura = 0, timer_led = 0;
 static uint8_t faultx, faulty, faultz;
 
 //funciones de transicion
-static int boton_presionado (fsm_t* this) { /*if (timer_boton)*/ return boton; /*else return 0;*/ }
+static int boton_presionado (fsm_t* this) { if (timer_boton)return boton; else return 0; }
 static int boton_no_presionado (fsm_t* this) {return !boton; }
 
 static int sensorx_on (fsm_t* this) { return sensorx; }
@@ -262,8 +262,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   //Temporizadores
-  HAL_TIM_Base_Start_IT(&htim6);
-  HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_Base_Start_IT(&htim6); //Temporizador del led azul
+  HAL_TIM_Base_Start_IT(&htim2); //Temporizador para hacer las lecturas
 
   //Creación de las FSM
   fsm_t* fsm_inicio = fsm_new (inicio);
@@ -351,10 +351,11 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	//Interrupcion por la pulsacion del boton de inicio
 	if(GPIO_Pin==GPIO_PIN_0 && timer_boton==1){
-		boton=~boton;
-		timer_boton=0;
-		HAL_TIM_Base_Start_IT(&htim7);
+		boton=~boton; //Cambia el flag del boton cada vez que se detecta una pulsacion
+		timer_boton=0; //Se reinicia el flag del temporizador del boton
+		HAL_TIM_Base_Start_IT(&htim7); //Vuelve a comenzar la cuenta del tiempo del boton
 
 	}
 }
@@ -371,9 +372,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 	}
 	if(htim->Instance==TIM7)
 	{
-		timer_boton=1;
-		HAL_TIM_Base_Stop_IT(&htim7);
-		__HAL_TIM_SET_COUNTER(&htim7,0);
+		timer_boton=1; //Cuando termina la cuenta del temporizador del boton se activa el flag
+		HAL_TIM_Base_Stop_IT(&htim7); //Se para el temporizador
+		__HAL_TIM_SET_COUNTER(&htim7,0); //Se reinicia a cero la cuenta del temporizador para volver a dispararlo mas tarde
 	}
 }
 
