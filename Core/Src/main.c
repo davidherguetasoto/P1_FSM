@@ -56,9 +56,19 @@ enum start_state {
 };
 
 //Estados FSM Lectura-Espera
-enum lecture_state{
-	ESPERA,
-	LECTURA,
+enum lecture_state_x{
+	ESPERA_X,
+	LECTURA_X,
+};
+
+enum lecture_state_y{
+	ESPERA_Y,
+	LECTURA_Y,
+};
+
+enum lecture_state_z{
+	ESPERA_Z,
+	LECTURA_Z,
 };
 
 //Estados FSM LED azul
@@ -182,26 +192,26 @@ static fsm_trans_t inicio[] = {
   };
 
 static fsm_trans_t lecturax[] = {
-  { ESPERA, activado_on, LECTURA, 0},
-  { LECTURA, activado_off, ESPERA, lectura_fin},
-  { LECTURA, sensorx_on, LECTURA, lectura_x},
-  { LECTURA, sensorx_off, LECTURA, lectura_x_fin},
+  { ESPERA_X, activado_on, LECTURA_X, 0},
+  { LECTURA_X, activado_off, ESPERA_X, lectura_fin},
+  { LECTURA_X, sensorx_on, LECTURA_X, lectura_x},
+  { LECTURA_X, sensorx_off, LECTURA_X, lectura_x_fin},
   {-1, NULL, -1, NULL },
   };
 
 static fsm_trans_t lecturay[] = {
-  { ESPERA, activado_on, LECTURA, 0},
-  { LECTURA, activado_off, ESPERA, lectura_fin},
-  { LECTURA, sensory_on, LECTURA, lectura_y},
-  { LECTURA, sensory_off, LECTURA, lectura_y_fin},
+  { ESPERA_Y, activado_on, LECTURA_Y, 0},
+  { LECTURA_Y, activado_off, ESPERA_Y, lectura_fin},
+  { LECTURA_Y, sensory_on, LECTURA_Y, lectura_y},
+  { LECTURA_Y, sensory_off, LECTURA_Y, lectura_y_fin},
   {-1, NULL, -1, NULL },
   };
 
 static fsm_trans_t lecturaz[] = {
-  { ESPERA, activado_on, LECTURA, 0},
-  { LECTURA, activado_off, ESPERA, lectura_fin},
-  { LECTURA, sensorz_on, LECTURA, lectura_z},
-  { LECTURA, sensorz_off, LECTURA, lectura_z_fin},
+  { ESPERA_Z, activado_on, LECTURA_Z, 0},
+  { LECTURA_Z, activado_off, ESPERA_Z, lectura_fin},
+  { LECTURA_Z, sensorz_on, LECTURA_Z, lectura_z},
+  { LECTURA_Z, sensorz_off, LECTURA_Z, lectura_z_fin},
   {-1, NULL, -1, NULL },
   };
 
@@ -248,12 +258,14 @@ int main(void)
   MX_USB_HOST_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   //Temporizadores
   HAL_TIM_Base_Start_IT(&htim6);
+  HAL_TIM_Base_Start_IT(&htim2);
 
-  //Cración de las FSM
+  //Creación de las FSM
   fsm_t* fsm_inicio = fsm_new (inicio);
   fsm_t* fsm_lectura_x = fsm_new (lecturax);
   fsm_t* fsm_lectura_y = fsm_new (lecturay);
@@ -349,6 +361,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
+	if(htim->Instance==TIM2)
+	{
+		timer_lectura=~timer_lectura;
+	}
 	if(htim->Instance==TIM6)
 	{
 		timer_led=~timer_led;
