@@ -38,6 +38,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define tiempo_boton 500
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -83,6 +85,7 @@ static uint8_t sensorx = 0, sensory = 0, sensorz = 0;
 
 //variables compartidas
 static uint8_t activado = 0, timer_boton = 1, timer_lectura = 0, timer_led = 0;
+uint32_t contador_tiempo_boton=0;
 
 //salidas
 static uint8_t faultx, faulty, faultz;
@@ -257,13 +260,14 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_HOST_Init();
   MX_TIM6_Init();
-  MX_TIM7_Init();
   MX_TIM10_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   //Temporizadores
   HAL_TIM_Base_Start_IT(&htim6); //Temporizador del led azul
   HAL_TIM_Base_Start_IT(&htim10); //Temporizador para hacer las lecturas
+  HAL_TIM_IC_Start_IT(&htim2,TIM_CHANNEL_1); //Temporizador boton
 
   //Creación de las FSM
   fsm_t* fsm_inicio = fsm_new (inicio);
@@ -288,6 +292,13 @@ int main(void)
     fsm_fire (fsm_lectura_z);
     fsm_fire (fsm_led_activo);
 
+    if (contador_tiempo_boton> tiempo_boton){
+    	timer_boton=1;
+    }
+    else
+    {
+    	timer_boton=0;
+    }
     if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1))
     	sensorx = 1;
     else
@@ -350,26 +361,19 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	//Interrupcion por la pulsacion del boton de inicio
-	if(GPIO_Pin==GPIO_PIN_0 && timer_boton==1){
-		boton=~boton; //Cambia el flag del boton cada vez que se detecta una pulsacion
-		timer_boton=0; //Se reinicia el flag del temporizador del boton
-		HAL_TIM_Base_Start_IT(&htim7); //Vuelve a comenzar la cuenta del tiempo del boton
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
+	//Comprobar que viene del timer 2
+	if (htim->Instance==TIM2){
+		boton=~boton;
+		contador_tiempo_boton = __HAL_TIM_GetCounter(htim);
+			__HAL_TIM_SetCounter(htim,0);
 	}
 }
-
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	if(htim->Instance==TIM6)
 	{
 		timer_led=~timer_led;
-	}
-	if(htim->Instance==TIM7)
-	{
-		timer_boton=1; //Cuando termina la cuenta del temporizador del boton se activa el flag
-		HAL_TIM_Base_Stop_IT(&htim7); //Se para el temporizador
-		__HAL_TIM_SET_COUNTER(&htim7,0); //Se reinicia a cero la cuenta del temporizador para volver a dispararlo mas tarde
 	}
 	if(htim->Instance==TIM10)
 	{
