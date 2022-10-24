@@ -77,9 +77,6 @@ enum led_state{
 	LED_ON
 };
 
-static int time = 0, time_passed = 0;
-static int flag_time = 0;
-
 //entradas
 static uint8_t boton = 0;
 static uint8_t sensorx = 0, sensory = 0, sensorz = 0;
@@ -261,12 +258,12 @@ int main(void)
   MX_USB_HOST_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
-  MX_TIM2_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
 
   //Temporizadores
   HAL_TIM_Base_Start_IT(&htim6); //Temporizador del led azul
-  HAL_TIM_Base_Start_IT(&htim2); //Temporizador para hacer las lecturas
+  HAL_TIM_Base_Start_IT(&htim10); //Temporizador para hacer las lecturas
 
   //Creación de las FSM
   fsm_t* fsm_inicio = fsm_new (inicio);
@@ -364,18 +361,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
-	if(htim->Instance==TIM2)
-	{
-		if(flag_time == 0){
-			time = HAL_GetTick();
-			flag_time = 1;
-		}
-		else{
-			time_passed = HAL_GetTick() - time;
-			flag_time = 0;
-		}
-		timer_lectura=~timer_lectura;
-	}
 	if(htim->Instance==TIM6)
 	{
 		timer_led=~timer_led;
@@ -385,6 +370,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 		timer_boton=1; //Cuando termina la cuenta del temporizador del boton se activa el flag
 		HAL_TIM_Base_Stop_IT(&htim7); //Se para el temporizador
 		__HAL_TIM_SET_COUNTER(&htim7,0); //Se reinicia a cero la cuenta del temporizador para volver a dispararlo mas tarde
+	}
+	if(htim->Instance==TIM10)
+	{
+		timer_lectura=~timer_lectura;
 	}
 }
 
