@@ -77,6 +77,9 @@ enum led_state{
 	LED_ON
 };
 
+static int time = 0, time_passed = 0;
+static int flag_time = 0;
+
 //entradas
 static uint8_t boton = 0;
 static uint8_t sensorx = 0, sensory = 0, sensorz = 0;
@@ -356,7 +359,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 		boton=~boton; //Cambia el flag del boton cada vez que se detecta una pulsacion
 		timer_boton=0; //Se reinicia el flag del temporizador del boton
 		HAL_TIM_Base_Start_IT(&htim7); //Vuelve a comenzar la cuenta del tiempo del boton
-
 	}
 }
 
@@ -364,6 +366,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	if(htim->Instance==TIM2)
 	{
+		if(flag_time == 0){
+			time = HAL_GetTick();
+			flag_time = 1;
+		}
+		else{
+			time_passed = HAL_GetTick() - time;
+			flag_time = 0;
+		}
 		timer_lectura=~timer_lectura;
 	}
 	if(htim->Instance==TIM6)
