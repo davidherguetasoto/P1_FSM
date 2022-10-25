@@ -88,19 +88,19 @@ static uint8_t timer_boton = 1, timer_lectura = 0, timer_led = 0;
 static uint8_t activado = 0;
 
 //salidas
-static uint8_t faultx, faulty, faultz, led_azul;
+static uint8_t faultx=0, faulty=0, faultz=0, led_azul=0;
 
 //funciones de transicion
-static int boton_presionado (fsm_t* this) { if (timer_boton) return boton; else return 0; }
-static int boton_no_presionado (fsm_t* this) { if (timer_boton) return !boton; else return 0; }
+static int boton_presionado (fsm_t* this) { if (timer_boton && boton) return 1; else return 0; }
+static int boton_no_presionado (fsm_t* this) { if (timer_boton && !boton) return 1; else return 0; }
 
 static int sensorx_on (fsm_t* this) { return sensorx; }
 static int sensory_on (fsm_t* this) { return sensory; }
 static int sensorz_on (fsm_t* this) { return sensorz; }
 
-static int activado_on (fsm_t* this) { if (timer_lectura) return activado; else return 0; }
+static int activado_on (fsm_t* this) { if (timer_lectura && activado) return 1; else return 0; }
 static int activado_off (fsm_t* this) { if (!timer_lectura || !activado) return 1; else return 0; }
-static int activado_on_led (fsm_t* this) { if (timer_led) return activado; else return 0; }
+static int activado_on_led (fsm_t* this) { if (timer_led && activado) return 1; else return 0; }
 static int activado_off_led (fsm_t* this) { if (!timer_led||!activado) return 1; else return 0; }
 
 static int defecto (fsm_t* this)  {return 1;}
@@ -131,49 +131,41 @@ static void desactivacion (fsm_t* this)
 static void lectura_x (fsm_t* this)
 {
   faultx = 1;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, 1);
 }
 
 static void lectura_y (fsm_t* this)
 {
   faulty = 1;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, 1);
 }
 
 static void lectura_z (fsm_t* this)
 {
   faultz = 1;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, 1);
 }
 
 static void lectura_x_fin (fsm_t* this)
 {
   faultx = 0;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, 0);
 }
 
 static void lectura_y_fin (fsm_t* this)
 {
   faulty = 0;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, 0);
 }
 
 static void lectura_z_fin (fsm_t* this)
 {
   faultz = 0;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, 0);
 }
 
 static void led_activado (fsm_t* this)
 {
   led_azul = 1;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 1);
 }
 
 static void led_no_activado (fsm_t* this)
 {
   led_azul = 0;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 0);
 }
 
 static fsm_trans_t inicio[] = {
@@ -278,6 +270,27 @@ int main(void)
     fsm_fire (fsm_lectura_z);
     fsm_fire (fsm_led_activo);
 
+    //LED SISTEMA ENCENDIDO
+    if(led_azul)
+    	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 1);
+    else
+    	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 0);
+
+    //LEDS SENSORES
+    if(faultx)
+    	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, 1);
+    else
+    	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, 0);
+    if(faulty)
+    	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, 1);
+    else
+    	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, 0);
+    if(faultz)
+    	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, 1);
+    else
+    	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, 0);
+
+    //LECTURA SENSORES
     if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1))
     	sensorx = 1;
     else
@@ -343,7 +356,7 @@ void SystemClock_Config(void)
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 	//Comprobar que viene del timer 2
 	if (htim->Instance==TIM2){
-		if(boton != 0)
+		if(boton)
 			boton = 0;
 		else
 			boton = 1;
@@ -358,14 +371,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	if(htim->Instance==TIM6)
 	{
-		if(timer_led != 0)
+		if(timer_led)
 			timer_led = 0;
 		else
 			timer_led = 1;
 	}
 	if(htim->Instance==TIM10)
 	{
-		if(timer_lectura != 0)
+		if(timer_lectura)
 			timer_lectura = 0;
 		else
 			timer_lectura = 1;
