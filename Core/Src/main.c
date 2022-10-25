@@ -82,27 +82,25 @@ enum led_state{
 //entradas
 static uint8_t boton = 0;
 static uint8_t sensorx = 0, sensory = 0, sensorz = 0;
+static uint8_t timer_boton = 1, timer_lectura = 0, timer_led = 0;
 
 //variables compartidas
-static uint8_t activado = 0, timer_boton = 1, timer_lectura = 0, timer_led = 0;
+static uint8_t activado = 0;
 
 //salidas
-static uint8_t faultx, faulty, faultz;
+static uint8_t faultx, faulty, faultz, led_azul;
 
 //funciones de transicion
-static int boton_presionado (fsm_t* this) { if (timer_boton)return boton; else return 0; }
-static int boton_no_presionado (fsm_t* this) {return !boton; }
+static int boton_presionado (fsm_t* this) { if (timer_boton) return boton; else return 0; }
+static int boton_no_presionado (fsm_t* this) { if (timer_boton) return !boton; else return 0; }
 
 static int sensorx_on (fsm_t* this) { return sensorx; }
 static int sensory_on (fsm_t* this) { return sensory; }
 static int sensorz_on (fsm_t* this) { return sensorz; }
-static int sensorx_off (fsm_t* this) { return !sensorx; }
-static int sensory_off (fsm_t* this) { return !sensory; }
-static int sensorz_off (fsm_t* this) { return !sensorz; }
 
 static int activado_on (fsm_t* this) { if (timer_lectura) return activado; else return 0; }
 static int activado_off (fsm_t* this) { if (!timer_lectura || !activado) return 1; else return 0; }
-static int activado_on_led (fsm_t* this) { if (timer_led && activado) return 1; else return 0; }
+static int activado_on_led (fsm_t* this) { if (timer_led) return activado; else return 0; }
 static int activado_off_led (fsm_t* this) { if (!timer_led||!activado) return 1; else return 0; }
 
 static int defecto (fsm_t* this)  {return 1;}
@@ -166,23 +164,15 @@ static void lectura_z_fin (fsm_t* this)
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, 0);
 }
 
-static void lectura_fin (fsm_t* this)
-{
-  faultx = 0;
-  faulty = 0;
-  faultz = 0;
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, 0);
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, 0);
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, 0);
-}
-
 static void led_activado (fsm_t* this)
 {
+  led_azul = 1;
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 1);
 }
 
 static void led_no_activado (fsm_t* this)
 {
+  led_azul = 0;
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 0);
 }
 
@@ -195,25 +185,22 @@ static fsm_trans_t inicio[] = {
 
 static fsm_trans_t lecturax[] = {
   { ESPERA_X, activado_on, LECTURA_X, 0},
-  { LECTURA_X, activado_off, ESPERA_X, lectura_fin},
+  { LECTURA_X, activado_off, ESPERA_X, lectura_x_fin},
   { LECTURA_X, sensorx_on, LECTURA_X, lectura_x},
-  { LECTURA_X, sensorx_off, LECTURA_X, lectura_x_fin},
   {-1, NULL, -1, NULL },
   };
 
 static fsm_trans_t lecturay[] = {
   { ESPERA_Y, activado_on, LECTURA_Y, 0},
-  { LECTURA_Y, activado_off, ESPERA_Y, lectura_fin},
+  { LECTURA_Y, activado_off, ESPERA_Y, lectura_y_fin},
   { LECTURA_Y, sensory_on, LECTURA_Y, lectura_y},
-  { LECTURA_Y, sensory_off, LECTURA_Y, lectura_y_fin},
   {-1, NULL, -1, NULL },
   };
 
 static fsm_trans_t lecturaz[] = {
   { ESPERA_Z, activado_on, LECTURA_Z, 0},
-  { LECTURA_Z, activado_off, ESPERA_Z, lectura_fin},
+  { LECTURA_Z, activado_off, ESPERA_Z, lectura_z_fin},
   { LECTURA_Z, sensorz_on, LECTURA_Z, lectura_z},
-  { LECTURA_Z, sensorz_off, LECTURA_Z, lectura_z_fin},
   {-1, NULL, -1, NULL },
   };
 
@@ -356,7 +343,10 @@ void SystemClock_Config(void)
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 	//Comprobar que viene del timer 2
 	if (htim->Instance==TIM2){
-		boton=~boton;
+		if(boton != 0)
+			boton = 0;
+		else
+			boton = 1;
 		if(__HAL_TIM_GetCounter(htim) > TIEMPO_BOTON)
 			timer_boton = 1;
 		else
@@ -368,11 +358,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	if(htim->Instance==TIM6)
 	{
-		timer_led=~timer_led;
+		if(timer_led != 0)
+			timer_led = 0;
+		else
+			timer_led = 1;
 	}
 	if(htim->Instance==TIM10)
 	{
-		timer_lectura=~timer_lectura;
+		if(timer_lectura != 0)
+			timer_lectura = 0;
+		else
+			timer_lectura = 1;
 	}
 }
 
