@@ -238,13 +238,13 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_HOST_Init();
   MX_TIM6_Init();
-  MX_TIM10_Init();
   MX_TIM2_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
   //Temporizadores
   HAL_TIM_Base_Start_IT(&htim6); //Temporizador del led azul
-  HAL_TIM_Base_Start_IT(&htim10); //Temporizador para hacer las lecturas
+  HAL_TIM_Base_Start_IT(&htim7); //Temporizador para hacer las lecturas
   HAL_TIM_IC_Start_IT(&htim2,TIM_CHANNEL_1); //Temporizador boton
 
   //Creación de las FSM
@@ -376,7 +376,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 		else
 			timer_led = 1;
 	}
-	if(htim->Instance==TIM10)
+	if(htim->Instance==TIM7)
 	{
 		if(timer_lectura)
 			timer_lectura = 0;
